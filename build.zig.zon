@@ -1,0 +1,17 @@
+.{
+    .name = .zioconsole,
+    .version = "0.1.0",
+    .fingerprint = 0x5085e8076fbe3b65,
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{
+        .zioansi = .{
+            .url = "git+https://github.com/deblasis/zioansi?ref=v0.2.0#15bc5d7ece5a0b934548c848fe785345c726b155",
+            .hash = "zioansi-0.2.0-37xjphVQAACNYNtWo8eG9vvJTIYBH_MJDFYTGOdN35pq",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
