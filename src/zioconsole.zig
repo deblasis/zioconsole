@@ -130,8 +130,8 @@ pub const Live = struct {
     /// Redraw the pinned status line at the bottom. No-op when not a TTY.
     pub fn set(self: *Live, status: []const u8) void {
         if (!self.is_tty) return;
-        self.mutex.lock(self.io) catch {};
-        defer self.mutex.unlock();
+        self.mutex.lockUncancelable(self.io);
+        defer self.mutex.unlock(self.io);
         const m = @min(status.len, self.status.len);
         @memcpy(self.status[0..m], status[0..m]);
         self.status_len = @intCast(m);
@@ -143,8 +143,8 @@ pub const Live = struct {
     /// Print a log line above the status; preserved in scrollback. When not a
     /// TTY, writes the line verbatim (no control codes) so pipes stay clean.
     pub fn println(self: *Live, text: []const u8) void {
-        self.mutex.lock(self.io) catch {};
-        defer self.mutex.unlock();
+        self.mutex.lockUncancelable(self.io);
+        defer self.mutex.unlock(self.io);
         if (!self.is_tty) {
             self.emit(cat(&self.out, &.{ text, "\n" }));
             return;
@@ -156,8 +156,8 @@ pub const Live = struct {
 
     /// Wipe the status line.
     pub fn clear(self: *Live) void {
-        self.mutex.lock(self.io) catch {};
-        defer self.mutex.unlock();
+        self.mutex.lockUncancelable(self.io);
+        defer self.mutex.unlock(self.io);
         if (!self.is_tty or !self.drawn) return;
         self.emit(renderClear(&self.out));
         self.drawn = false;
@@ -166,8 +166,8 @@ pub const Live = struct {
 
     /// Leave the last status line in scrollback and advance to a fresh line.
     pub fn finish(self: *Live) void {
-        self.mutex.lock(self.io) catch {};
-        defer self.mutex.unlock();
+        self.mutex.lockUncancelable(self.io);
+        defer self.mutex.unlock(self.io);
         if (!self.is_tty or !self.drawn) return;
         self.emit("\n");
         self.drawn = false;
