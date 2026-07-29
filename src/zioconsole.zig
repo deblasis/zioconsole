@@ -102,7 +102,7 @@ pub const Live = struct {
     drawn: bool,
     status: [512]u8 = undefined,
     status_len: u32 = 0,
-    mutex: std.Thread.Mutex = .{},
+    mutex: std.Io.Mutex = .init,
     out: [4096]u8 = undefined, // render* output (the sequence to emit)
     wbuf: [4096]u8 = undefined, // writer's own buffer (distinct from `out`)
 
@@ -130,7 +130,7 @@ pub const Live = struct {
     /// Redraw the pinned status line at the bottom. No-op when not a TTY.
     pub fn set(self: *Live, status: []const u8) void {
         if (!self.is_tty) return;
-        self.mutex.lock();
+        self.mutex.lock(self.io) catch {};
         defer self.mutex.unlock();
         const m = @min(status.len, self.status.len);
         @memcpy(self.status[0..m], status[0..m]);
@@ -143,7 +143,7 @@ pub const Live = struct {
     /// Print a log line above the status; preserved in scrollback. When not a
     /// TTY, writes the line verbatim (no control codes) so pipes stay clean.
     pub fn println(self: *Live, text: []const u8) void {
-        self.mutex.lock();
+        self.mutex.lock(self.io) catch {};
         defer self.mutex.unlock();
         if (!self.is_tty) {
             self.emit(cat(&self.out, &.{ text, "\n" }));
@@ -156,7 +156,7 @@ pub const Live = struct {
 
     /// Wipe the status line.
     pub fn clear(self: *Live) void {
-        self.mutex.lock();
+        self.mutex.lock(self.io) catch {};
         defer self.mutex.unlock();
         if (!self.is_tty or !self.drawn) return;
         self.emit(renderClear(&self.out));
@@ -166,7 +166,7 @@ pub const Live = struct {
 
     /// Leave the last status line in scrollback and advance to a fresh line.
     pub fn finish(self: *Live) void {
-        self.mutex.lock();
+        self.mutex.lock(self.io) catch {};
         defer self.mutex.unlock();
         if (!self.is_tty or !self.drawn) return;
         self.emit("\n");
@@ -220,3 +220,17 @@ test "cat truncates to buffer length" {
     try testing.expectEqual(@as(usize, 5), s.len);
     try testing.expectEqualStrings("abcde", s);
 }
+
+test "Live instantiates and its methods run (non-TTY path)" {
+    // Covers the mutex field + every method compiling. stderr is not a TTY in
+    // tests, so set is a no-op and println writes verbatim.
+    var threaded = std.Io.Threaded.init(testing.allocator, .{});
+    defer threaded.deinit();
+    var live = Live.init(threaded.io(), .{});
+    defer live.deinit();
+    live.set("status");
+    live.println("a log line");
+    live.clear();
+    live.finish();
+}
+

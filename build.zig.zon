@@ -1,6 +1,6 @@
 .{
     .name = .zioconsole,
-    .version = "0.1.0",
+    .version = "0.1.1",
     .fingerprint = 0x5085e8076fbe3b65,
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
