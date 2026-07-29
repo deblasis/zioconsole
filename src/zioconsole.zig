@@ -104,7 +104,6 @@ pub const Live = struct {
     status_len: u32 = 0,
     mutex: std.Io.Mutex = .init,
     out: [4096]u8 = undefined, // render* output (the sequence to emit)
-    wbuf: [4096]u8 = undefined, // writer's own buffer (distinct from `out`)
 
     pub fn init(io: std.Io, opts: Options) Live {
         const file = switch (opts.stream) {
@@ -119,12 +118,12 @@ pub const Live = struct {
         };
     }
 
-    /// Write `bytes` through one buffered writer + a single flush.
+    /// Write `bytes` directly (a synchronous streaming write). We avoid the
+    /// buffered `file.writer` here because its buffer is a shared field reused
+    /// across concurrent (mutex-serialized) calls; a streaming write has no
+    /// buffer to alias, so it is correct under the lock.
     fn emit(self: *Live, bytes: []const u8) void {
-        var fw = self.file.writer(self.io, &self.wbuf);
-        const w = &fw.interface;
-        w.writeAll(bytes) catch {};
-        w.flush() catch {};
+        self.file.writeStreamingAll(self.io, bytes) catch {};
     }
 
     /// Redraw the pinned status line at the bottom. No-op when not a TTY.
